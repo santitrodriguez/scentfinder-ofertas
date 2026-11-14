@@ -39,6 +39,16 @@ Para agregar o cambiar una promo, editá ese archivo desde GitHub (lápiz ✏️
 
 Al guardar el cambio, la página se republica sola en unos minutos.
 
+### Aviso automático de promos nuevas
+
+Todos los días, junto con la actualización de precios, `npm run watch-promos` lee las páginas de promos bancarias de las tiendas y guarda en `data/promo-watch.json` todo lo que dicen de **Galicia / Éminent** (incluida la vigencia de los legales). Si algo cambia (una promo nueva, una que se renueva o una que desaparece), se crea un **Issue** en el repo con el detalle y GitHub te lo manda por mail. Con eso actualizás `data/promos.json` (o se lo pedís a Claude).
+
+- Lee bien Juleriaque, Rouge, Beauty 24 y Ruiz y Roca.
+- **Pigmento** arma sus promos con imágenes que se cargan después: solo se detecta si Galicia aparece en el texto de la página.
+- **Parfumerie** bloquea las lecturas automáticas: hay que revisarla a mano en https://www.parfumerie.com.ar/metodos-de-pago.
+- Para cambiar de tarjeta o banco, editá `WATCH` al principio de `scripts/watch-promos.js`.
+- Para ver cómo llega el aviso: **Actions › Actualizar ofertas › Run workflow** y tildá "Crear un aviso de prueba".
+
 ## Publicación automática (GitHub Actions + Pages)
 
 1. Subí esta carpeta a un repositorio de GitHub (rama `main`).

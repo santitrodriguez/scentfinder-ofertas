@@ -3,13 +3,19 @@ name: Actualizar ofertas
 on:
   schedule:
     - cron: '0 10 * * *'   # 10:00 UTC = 7:00 hora Argentina
-  workflow_dispatch: {}      # botón "Run workflow" para correrlo a mano
+  workflow_dispatch:        # botón "Run workflow" para correrlo a mano
+    inputs:
+      probar_aviso:
+        description: 'Crear un aviso de prueba de promos (para ver cómo llega)'
+        type: boolean
+        default: false
   push:
     branches: [main]
     paths: ['site/**', 'data/promos.json', 'config.js']   # si cambia la página o las promos, se republica sin volver a leer precios
 
 permissions:
   contents: write
+  issues: write
   pages: write
   id-token: write
 
@@ -31,6 +37,24 @@ jobs:
         if: github.event_name != 'push'
         run: npm run scrape
         continue-on-error: true   # si una tienda falla, se usan sus datos anteriores
+
+      - name: Revisar promos bancarias (Galicia / Éminent)
+        if: github.event_name != 'push'
+        run: npm run watch-promos
+        continue-on-error: true
+
+      - name: Avisar si cambiaron las promos
+        if: github.event_name != 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PROBAR: ${{ inputs.probar_aviso }}
+        run: |
+          if [ "$PROBAR" = "true" ] && [ ! -f promo-changes.md ]; then
+            printf 'Aviso de **prueba**: así te va a llegar cuando cambien las promos con Galicia / Éminent en alguna perfumería.\n\nPodés cerrar este aviso.\n' > promo-changes.md
+          fi
+          if [ -f promo-changes.md ]; then
+            gh issue create --title "Promos Galicia Éminent: hubo cambios ($(TZ=America/Argentina/Buenos_Aires date +%d/%m))" --body-file promo-changes.md
+          fi
 
       - name: Cruzar tiendas y armar ofertas.json
         run: npm run build

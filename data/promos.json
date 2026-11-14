@@ -38,12 +38,12 @@
         "sabado",
         "domingo"
       ],
-      "channel": "web",
+      "channel": "ambos",
       "cuotas": 18,
       "minAmount": null,
-      "until": null,
+      "until": "2026-12-31",
       "checked": "2026-11-14",
-      "detail": "Hasta 18 cuotas sin interés todos los días excepto martes.",
+      "detail": "Hasta 18 cuotas sin interés con Mastercard crédito (cartera General y Éminent), sin mínimo, todos los días excepto martes. Sucursales y web.",
       "source": "https://www.juleriaque.com.ar/beneficios"
     },
     {
@@ -55,12 +55,12 @@
       "days": [
         "todos"
       ],
-      "channel": "web",
+      "channel": "ambos",
       "cuotas": 18,
       "minAmount": 200000,
-      "until": null,
+      "until": "2026-12-31",
       "checked": "2026-11-14",
-      "detail": "Hasta 18 cuotas sin interés con Mastercard Galicia Éminent en compras de más de $200.000.",
+      "detail": "18 cuotas sin interés con Mastercard crédito de Galicia, mínimo $200.000, todos los días. Locales y web. No aplica con Mercado Pago ni MODO.",
       "source": "https://www.perfumeriasrouge.com"
     },
     {
@@ -72,12 +72,12 @@
       "days": [
         "todos"
       ],
-      "channel": "web",
+      "channel": "ambos",
       "cuotas": 18,
       "minAmount": 200000,
-      "until": null,
+      "until": "2026-12-31",
       "checked": "2026-11-14",
-      "detail": "Hasta 18 cuotas sin interés con Mastercard Galicia Éminent en compras de más de $200.000.",
+      "detail": "18 cuotas sin interés con Mastercard crédito de Galicia, mínimo $200.000, todos los días. Locales y web. No aplica con Mercado Pago ni MODO.",
       "source": "https://www.beauty24.com.ar"
     },
     {
