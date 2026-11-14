@@ -1,0 +1,43 @@
+{
+  "_ayuda": "Promos bancarias por tienda. Editá este archivo para agregar, cambiar o sacar promos. type: reintegro | descuento | cuotas. days: lunes..domingo o 'todos'. channel: web | sucursal | ambos. tope: monto máximo de reintegro en $ (null = sin tope). until: último día de vigencia (AAAA-MM-DD); pasada esa fecha la promo deja de mostrarse sola.",
+  "cards": [
+    { "id": "galicia-eminent", "name": "Galicia Éminent" }
+  ],
+  "promos": [
+    {
+      "card": "galicia-eminent", "store": "juleriaque", "type": "reintegro", "pct": 15, "tope": null,
+      "days": ["martes"], "channel": "sucursal", "cuotas": 6, "minAmount": null,
+      "until": "2026-11-24", "checked": "2026-11-14",
+      "detail": "15% de reintegro sin tope + hasta 6 cuotas sin interés. Martes, exclusivo sucursales. Visa débito y crédito Visa, Mastercard y Amex de la cartera Éminent.",
+      "source": "https://www.juleriaque.com.ar/beneficios"
+    },
+    {
+      "card": "galicia-eminent", "store": "juleriaque", "type": "cuotas", "pct": 0, "tope": null,
+      "days": ["lunes", "miercoles", "jueves", "viernes", "sabado", "domingo"], "channel": "web", "cuotas": 18, "minAmount": null,
+      "until": null, "checked": "2026-11-14",
+      "detail": "Hasta 18 cuotas sin interés todos los días excepto martes.",
+      "source": "https://www.juleriaque.com.ar/beneficios"
+    },
+    {
+      "card": "galicia-eminent", "store": "rouge", "type": "cuotas", "pct": 0, "tope": null,
+      "days": ["todos"], "channel": "web", "cuotas": 18, "minAmount": 200000,
+      "until": null, "checked": "2026-11-14",
+      "detail": "Hasta 18 cuotas sin interés con Mastercard Galicia Éminent en compras de más de $200.000.",
+      "source": "https://www.perfumeriasrouge.com"
+    },
+    {
+      "card": "galicia-eminent", "store": "beauty24", "type": "cuotas", "pct": 0, "tope": null,
+      "days": ["todos"], "channel": "web", "cuotas": 18, "minAmount": 200000,
+      "until": null, "checked": "2026-11-14",
+      "detail": "Hasta 18 cuotas sin interés con Mastercard Galicia Éminent en compras de más de $200.000.",
+      "source": "https://www.beauty24.com.ar"
+    },
+    {
+      "card": "galicia-eminent", "store": "parfumerie", "type": "cuotas", "pct": 0, "tope": null,
+      "days": ["todos"], "channel": "web", "cuotas": 12, "minAmount": null,
+      "until": null, "checked": "2026-11-14",
+      "detail": "12 cuotas sin interés todos los días con Galicia.",
+      "source": "https://www.parfumerie.com.ar/metodos-de-pago"
+    }
+  ]
+}

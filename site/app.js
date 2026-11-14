@@ -4,7 +4,8 @@
   const PAGE = 60;
   const app = document.getElementById('app');
   let D = null;
-  const S = { q: '', store: 'all', min: 0, size: 'all', sort: 'pct', shown: PAGE };
+  const S = { q: '', store: 'all', min: 0, size: 'all', sort: 'pct', shown: PAGE, card: '' };
+  try { S.card = localStorage.getItem('sf-card') || ''; } catch (e) { /* sin almacenamiento */ }
 
   // ---------- utilidades ----------
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -30,10 +31,34 @@
 
   // Foto del perfume; si no carga, queda un frasco dibujado en su lugar
   const thumb = (src, alt, cls = 'thumb') => `<span class="${cls}">${src ? `<img src="${esc(src)}" alt="${esc(alt)}" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="this.remove()">` : ''}${LOGO}</span>`;
+  // ---------- promos bancarias ----------
+  const DAYS = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
+  const DAY_LABEL = { lunes: 'lunes', martes: 'martes', miercoles: 'miércoles', jueves: 'jueves', viernes: 'viernes', sabado: 'sábados', domingo: 'domingos' };
+  const todayDay = () => DAYS[new Date(new Date().toLocaleString('en-US', { timeZone: TZ })).getDay()];
+  const cardName = () => D.promos?.cards.find(c => c.id === S.card)?.name || '';
+  const promosFor = store => !S.card ? [] : (D.promos?.promos || []).filter(p => p.card === S.card && p.store === store);
+  const daysTxt = p => p.days.includes('todos') ? 'todos los días'
+    : p.days.length >= 6 ? 'todos los días excepto ' + DAYS.slice(1).concat('domingo').filter(d => !p.days.includes(d)).map(d => DAY_LABEL[d]).join(' y ')
+    : 'los ' + p.days.map(d => DAY_LABEL[d] + (d.endsWith('s') || d === 'sabado' || d === 'domingo' ? '' : '')).join(' y ');
+  const chanTxt = p => p.channel === 'sucursal' ? 'solo en sucursal' : p.channel === 'web' ? 'en la web' : 'web y sucursal';
+  const isToday = p => p.days.includes('todos') || p.days.includes(todayDay());
+  // reintegro o descuento con la tarjeta elegida: precio final y % total contra el precio de lista
+  function withCard(store, price, list) {
+    const p = promosFor(store).filter(x => x.type !== 'cuotas' && x.pct > 0).sort((a, b) => b.pct - a.pct)[0];
+    if (!p) return null;
+    const back = Math.min(price * p.pct / 100, p.tope || Infinity);
+    const final = price - back;
+    return { promo: p, final, back, totalPct: list > 0 ? Math.round((1 - final / list) * 100) : p.pct };
+  }
+  const cuotasPromo = store => promosFor(store).filter(x => x.type === 'cuotas').sort((a, b) => b.cuotas - a.cuotas)[0];
+  const bestPct = o => Math.max(o.pct, withCard(o.store, o.price, o.list)?.totalPct || 0);
+  const finalPrice = o => withCard(o.store, o.price, o.list)?.final ?? o.price;
+
   const SIZES = [['all', 'Todos'], ['s', 'Hasta 60 ml'], ['m', '75–125 ml'], ['l', '150 ml o más']];
   const inSize = (ml, k) => k === 'all' || (k === 's' ? ml <= 60 : k === 'm' ? ml > 60 && ml < 150 : ml >= 150);
   const DISC = [[0, 'Todos'], [20, '20% o más'], [30, '30% o más'], [40, '40% o más']];
   const SORTS = [['pct', 'Mayor descuento'], ['price', 'Menor precio'], ['save', 'Mayor ahorro en $'], ['brand', 'Marca A–Z']];
+  const sorts = () => S.card ? [SORTS[0], ['final', 'Precio final con mi tarjeta'], ...SORTS.slice(1)] : SORTS;
 
   // ---------- datos ----------
   async function load() {
@@ -51,14 +76,15 @@
   function filtered() {
     const words = fold(S.q).split(/\s+/).filter(Boolean);
     const list = D.offers.filter(o =>
-      (S.store === 'all' || o.store === S.store) && o.pct >= S.min && inSize(o.ml, S.size) &&
+      (S.store === 'all' || o.store === S.store) && bestPct(o) >= S.min && inSize(o.ml, S.size) &&
       words.every(w => o._q.includes(w)));
     const by = {
-      pct: (a, b) => b.pct - a.pct || a.price - b.price,
+      pct: (a, b) => bestPct(b) - bestPct(a) || a.price - b.price,
+      final: (a, b) => finalPrice(a) - finalPrice(b) || b.pct - a.pct,
       price: (a, b) => a.price - b.price || b.pct - a.pct,
       save: (a, b) => b.save - a.save || b.pct - a.pct,
       brand: (a, b) => a.brand.localeCompare(b.brand, 'es') || a.name.localeCompare(b.name, 'es') || a.ml - b.ml || a.price - b.price,
-    }[S.sort];
+    }[S.sort] || ((a, b) => b.pct - a.pct);
     return list.sort(by);
   }
 
@@ -105,7 +131,7 @@
         <input id="buscar" type="search" placeholder="Buscar perfume o marca" value="${esc(S.q)}" autocomplete="off">
         <div class="sort">
           <label for="orden">Ordenar por</label>
-          <select id="orden">${SORTS.map(([v, t]) => `<option value="${v}"${S.sort === v ? ' selected' : ''}>${t}</option>`).join('')}</select>
+          <select id="orden">${sorts().map(([v, t]) => `<option value="${v}"${S.sort === v ? ' selected' : ''}>${t}</option>`).join('')}</select>
         </div>
       </div>
       <div class="row chips" role="group" aria-label="Tienda"><span class="lbl">Tienda</span>${chips(storeList, S.store, 'store')}</div>
@@ -114,6 +140,8 @@
         <span class="sep" aria-hidden="true"></span>
         <span class="lbl">Tamaño</span>${chips(SIZES, S.size, 'size')}
       </div>
+      ${D.promos?.cards?.length ? `<div class="row chips" role="group" aria-label="Mi tarjeta"><span class="lbl">Mi tarjeta</span>${chips([['', 'Ninguna'], ...D.promos.cards.map(c => [c.id, c.name])], S.card, 'card')}</div>
+      <p class="card-note" id="cardnote"></p>` : ''}
     </section>
     <p class="sr" id="resumen" aria-live="polite"></p>
     <section class="grid" id="grid" aria-label="Ofertas"></section>
@@ -126,10 +154,23 @@
     document.getElementById('orden').addEventListener('change', e => { S.sort = e.target.value; S.shown = PAGE; renderGrid(); });
     app.querySelectorAll('.chip').forEach(b => b.addEventListener('click', () => {
       const k = b.dataset.k; S[k] = k === 'min' ? +b.dataset.v : b.dataset.v; S.shown = PAGE;
+      if (k === 'card') {
+        try { localStorage.setItem('sf-card', S.card); } catch (e) { /* sin almacenamiento */ }
+        if (!S.card && S.sort === 'final') S.sort = 'pct';
+        return renderHome();
+      }
       app.querySelectorAll(`.chip[data-k="${k}"]`).forEach(x => x.setAttribute('aria-pressed', String(x === b)));
       renderGrid();
     }));
     renderGrid();
+  }
+
+  function bankLine(store, price, list) {
+    if (!S.card) return '';
+    const w = withCard(store, price, list), c = cuotasPromo(store);
+    if (w) return `<div class="bank${isToday(w.promo) ? ' today' : ''}"><span>Con ${esc(cardName())}: <b>${money(w.final)}</b> <span class="tot">−${w.totalPct}% en total</span></span><span class="cond">${w.promo.pct}% de reintegro ${esc(daysTxt(w.promo))}, ${esc(chanTxt(w.promo))}</span></div>`;
+    if (c) return `<div class="bank plain"><span class="cond">${esc(cardName())}: hasta ${c.cuotas} cuotas sin interés${c.minAmount ? ` desde ${money(c.minAmount)}` : ''}, sin reintegro</span></div>`;
+    return `<div class="bank plain"><span class="cond">Sin promo con ${esc(cardName())} en esta tienda</span></div>`;
   }
 
   function card(o) {
@@ -154,6 +195,7 @@
       </div>
       <div class="prices"><span class="price">${money(o.price)}</span><s class="was">${money(o.list)}</s></div>
       <div class="where"><span>en <b>${esc(storeName(o.store))}</b></span>${stale}</div>
+      ${bankLine(o.store, o.price, o.list)}
       <div class="others">
         <span class="lbl">En otras tiendas</span>
         ${others.length ? others.map(x => `<div class="o-row${x.stock ? '' : ' out'}"><span>${esc(storeName(x.store))}</span><b>${x.stock ? money(x.price) : 'Sin stock'}</b></div>`).join('')
@@ -163,7 +205,20 @@
     </a>`;
   }
 
+  function cardNote() {
+    const el = document.getElementById('cardnote');
+    if (!el) return;
+    if (!S.card) { el.textContent = ''; el.hidden = true; return; }
+    const ps = (D.promos?.promos || []).filter(p => p.card === S.card);
+    const re = ps.filter(p => p.type !== 'cuotas');
+    el.hidden = false;
+    el.innerHTML = re.length
+      ? re.map(p => `<b>${esc(storeName(p.store))}</b>: ${p.pct}% de reintegro${p.tope ? ` (tope ${money(p.tope)})` : ' sin tope'}, ${esc(daysTxt(p))}, ${esc(chanTxt(p))}${p.until ? `, hasta el ${dmFromYmd(p.until)}` : ''}${isToday(p) ? ' · <b class="hoy">¡hoy aplica!</b>' : ''}.`).join(' ') + ` El precio final se calcula sobre el precio de la web: en sucursal puede ser distinto. En la web, ninguna de las 6 tiendas tiene reintegro con ${esc(cardName())}; solo cuotas sin interés.`
+      : `Hoy ninguna tienda tiene reintegro con ${esc(cardName())}; solo cuotas sin interés.`;
+  }
+
   function renderGrid() {
+    cardNote();
     const list = filtered();
     const grid = document.getElementById('grid'), after = document.getElementById('after');
     document.getElementById('resumen').textContent = `${list.length} ofertas con estos filtros`;
@@ -216,6 +271,7 @@
             ${e.stock ? '' : '<span class="tag out">Sin stock</span>'}
           </div>
           <span class="meta">${esc(meta)}</span>
+          ${e.stock ? bankLine(e.store, e.price, e.list) : ''}
         </div>
         <div class="amt">
           ${e.list > e.price ? `<s>${money(e.list)}</s>` : ''}
@@ -310,13 +366,19 @@
           <li>Si una tienda falla, se mantienen sus precios del día anterior y se muestra la fecha.</li>
         </ul>
       </section>
+      <section class="box">
+        <h2>5 · Promos bancarias</h2>
+        <p>Elegí tu tarjeta en “Mi tarjeta” y cada oferta muestra el precio final con el reintegro sumado, y en qué días y canal aplica.</p>
+        <ul>${(D.promos?.promos || []).map(p => `<li><b>${esc(storeName(p.store))}</b> · ${esc(D.promos.cards.find(c => c.id === p.card)?.name || p.card)}: ${esc(p.detail)}${p.until ? ` Hasta el ${dmFromYmd(p.until)}.` : ''}</li>`).join('') || '<li>No hay promos cargadas.</li>'}</ul>
+        <p class="note">Las promos se revisan a mano en la página de cada tienda (última revisión: ${dmFromYmd((D.promos?.promos || []).map(p => p.checked).sort().pop() || '')}). Confirmá siempre en la tienda o en la app del banco antes de pagar.</p>
+      </section>
       <section class="box warm">
-        <h2>5 · A tener en cuenta</h2>
+        <h2>6 · A tener en cuenta</h2>
         <ul>
           <li>Rouge y Beauty 24 comparten catálogo y precios: aparecen las dos.</li>
           <li>Algunos “precios de lista” están inflados: el % compara contra la propia tienda; el ahorro real es contra las otras.</li>
           <li>Si una tienda tiene varias versiones del mismo frasco (normal, recargable, edición limitada), se muestra la más barata con stock.</li>
-          <li>No se incluyen descuentos por medio de pago ni promociones bancarias.</li>
+          <li>El % grande de cada oferta es el descuento de la tienda. El reintegro de tu tarjeta se suma aparte, solo si elegís “Mi tarjeta”.</li>
         </ul>
       </section>
     </div>`;

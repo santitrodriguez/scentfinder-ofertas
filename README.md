@@ -25,6 +25,20 @@ MIN_DISCOUNT=0.2 npm run build
 
 Para cambiarlo en la actualización diaria, editá `config.js` y subí el cambio. El rango de tamaños (`MIN_ML`, `MAX_ML`) está en el mismo archivo.
 
+## Promos bancarias (Mi tarjeta)
+
+Las promos se cargan a mano en [data/promos.json](data/promos.json), porque cada tienda las publica distinto (muchas veces como imágenes) y cambian todos los meses. En la página, "Mi tarjeta" muestra el precio final con el reintegro sumado y en qué días y canal aplica.
+
+Para agregar o cambiar una promo, editá ese archivo desde GitHub (lápiz ✏️) copiando una existente:
+
+- `card`: la tarjeta (tiene que estar en `cards`). Para sumar otra tarjeta, agregala a `cards`.
+- `store`: `juleriaque`, `rouge`, `beauty24`, `pigmento`, `parfumerie` o `ruizyroca`.
+- `type`: `reintegro`, `descuento` o `cuotas`. `pct`: el porcentaje. `tope`: monto máximo de reintegro en $ (`null` = sin tope).
+- `days`: `["martes"]`, `["todos"]`, etc. `channel`: `web`, `sucursal` o `ambos`.
+- `until`: último día de vigencia (AAAA-MM-DD). Pasada esa fecha deja de mostrarse sola.
+
+Al guardar el cambio, la página se republica sola en unos minutos.
+
 ## Publicación automática (GitHub Actions + Pages)
 
 1. Subí esta carpeta a un repositorio de GitHub (rama `main`).
@@ -45,5 +59,5 @@ Después corre solo todos los días a las 10:00 UTC (7:00 en Argentina). Cada co
 ## Limitaciones conocidas
 
 - **Parfumerie** responde 403 a cualquier pedido que no venga de un navegador. El lector está escrito pero no se pudo probar; mientras tanto la tienda figura como "sin datos". Si la tienda habilita el acceso, revisá `categoryPath` en `config.js`.
-- No se incluyen promociones bancarias ni descuentos por transferencia.
+- Las promos bancarias se cargan a mano (ver arriba). No se incluyen descuentos por transferencia.
 - Rouge y Beauty 24 comparten catálogo: sus ofertas aparecen duplicadas, una por tienda.

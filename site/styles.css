@@ -68,6 +68,17 @@ h1.hero { margin: 6px 0 0; font-family: var(--serif); font-weight: 500; font-siz
 .thumb.big { width: 148px; height: 148px; border-radius: 14px; }
 .thumb.big svg { width: 48px; height: 48px; }
 
+/* ---------- Promos bancarias ---------- */
+.card-note { margin: 0; font-size: 13px; color: var(--ink-2); background: var(--input); border-radius: 10px; padding: 10px 12px; }
+.card-note .hoy { color: var(--green-ink); }
+.bank { display: flex; flex-direction: column; gap: 2px; border: 1px dashed #b9c2f0; background: #f2f4fe; border-radius: 10px; padding: 8px 12px; font-size: 13px; }
+.bank b { font-size: 16px; font-variant-numeric: tabular-nums; }
+.bank .tot { color: var(--link); font-weight: 700; margin-left: 4px; }
+.bank .cond { color: var(--muted); font-size: 12px; }
+.bank.today { border-style: solid; border-color: var(--link); }
+.bank.plain { background: transparent; border-color: var(--line); padding: 6px 10px; }
+.srow .bank { margin-top: 6px; }
+
 /* ---------- Tarjetas ---------- */
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 330px), 1fr)); gap: 16px; }
 .card { text-decoration: none; color: var(--ink); background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 18px; display: flex; flex-direction: column; gap: 14px; }
@@ -205,6 +216,8 @@ h1.page { margin: 0; font-family: var(--serif); font-weight: 500; font-size: 40p
   .was { font-size: 12.5px; }
   .card .where .perml { display: none; }
   .card .others { display: none; }
+  .bank { padding: 7px 10px; }
+  .bank b { font-size: 15px; }
   .save { border-radius: 9px; padding: 7px 10px; font-size: 12.5px; }
   .save .vs-long { display: none; }
   .save .vs-short { display: inline; }

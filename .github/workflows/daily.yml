@@ -6,7 +6,7 @@ on:
   workflow_dispatch: {}      # botón "Run workflow" para correrlo a mano
   push:
     branches: [main]
-    paths: ['site/**']       # si cambia la página, se republica sin volver a leer precios
+    paths: ['site/**', 'data/promos.json', 'config.js']   # si cambia la página o las promos, se republica sin volver a leer precios
 
 permissions:
   contents: write

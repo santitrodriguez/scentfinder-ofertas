@@ -185,6 +185,13 @@ for (const [pk, cis] of byProduct) {
 }
 
 offers.sort((a, b) => b.pct - a.pct || a.price - b.price);
+
+// Promos bancarias (data/promos.json, se cargan a mano): solo las vigentes
+let promos = { cards: [], promos: [] };
+if (fs.existsSync('data/promos.json')) {
+  const p = JSON.parse(fs.readFileSync('data/promos.json', 'utf8'));
+  promos = { cards: p.cards || [], promos: (p.promos || []).filter(x => !x.until || x.until >= today) };
+}
 const out = {
   generatedAt: now.toISOString(), date: today, minDiscount: MIN_DISCOUNT,
   historyFrom: history.length ? history[history.length - 1].date : today,
@@ -193,7 +200,7 @@ const out = {
 fs.mkdirSync('data', { recursive: true });
 // una oferta / producto por línea para que el historial de git sea liviano
 const lines = (obj) => Object.entries(obj).map(([k, v]) => `${JSON.stringify(k)}:${JSON.stringify(v)}`).join(',\n');
-fs.writeFileSync('data/ofertas.json', `{${lines({ generatedAt: out.generatedAt, date: out.date, minDiscount: out.minDiscount, historyFrom: out.historyFrom, stores: out.stores, count: out.count })},
+fs.writeFileSync('data/ofertas.json', `{${lines({ generatedAt: out.generatedAt, date: out.date, minDiscount: out.minDiscount, historyFrom: out.historyFrom, stores: out.stores, count: out.count, promos })},
 "offers":[
 ${offers.map(o => JSON.stringify(o)).join(',\n')}
 ],
