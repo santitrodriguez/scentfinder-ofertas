@@ -53,6 +53,9 @@
   const cuotasPromo = store => promosFor(store).filter(x => x.type === 'cuotas').sort((a, b) => b.cuotas - a.cuotas)[0];
   const bestPct = o => Math.max(o.pct, withCard(o.store, o.price, o.list)?.totalPct || 0);
   const finalPrice = o => withCard(o.store, o.price, o.list)?.final ?? o.price;
+  // precio con tarjeta para cualquier entrada {store, price}; sin tarjeta elegida es el precio normal
+  const eff = x => withCard(x.store, x.price, x.list || x.price)?.final ?? x.price;
+  const promoTxt = x => { const w = withCard(x.store, x.price, x.list || x.price); return w ? `con ${cardName()}, ${w.promo.pct}% de reintegro ${daysTxt(w.promo)}, ${chanTxt(w.promo)}` : ''; };
 
   const SIZES = [['all', 'Todos'], ['s', 'Hasta 60 ml'], ['m', '75–125 ml'], ['l', '150 ml o más']];
   const inSize = (ml, k) => k === 'all' || (k === 's' ? ml <= 60 : k === 'm' ? ml > 60 && ml < 150 : ml >= 150);
@@ -175,10 +178,13 @@
 
   function card(o) {
     const others = o.others.slice(0, 5);
-    const cheaper = o.others.filter(x => x.stock && x.price < o.price).sort((a, b) => a.price - b.price)[0];
+    const mine = eff(o);
+    const cheaper = o.others.filter(x => x.stock && eff(x) < mine - 0.5).sort((a, b) => eff(a) - eff(b))[0];
+    const worstOther = o.others.filter(x => x.stock).sort((a, b) => eff(b) - eff(a))[0];
+    const saveAmt = worstOther ? eff(worstOther) - mine : 0;
     let save;
-    if (cheaper) save = `<div class="save alt"><span>Más barato en <b>${esc(storeName(cheaper.store))}</b>: <b>${money(cheaper.price)}</b></span><span class="go">Comparar →</span></div>`;
-    else if (o.save > 0) save = `<div class="save"><span>Ahorrás <b>${money(o.save)}</b> <span class="vs-long">vs. la más cara</span><span class="vs-short">vs. ${esc(storeName(o.saveVs))}</span></span><span class="go">Comparar →</span></div>`;
+    if (cheaper) save = `<div class="save alt"><span>Más barato en <b>${esc(storeName(cheaper.store))}</b>: <b>${money(eff(cheaper))}</b>${promoTxt(cheaper) ? ` <span class="why">(${esc(promoTxt(cheaper))})</span>` : ''}</span><span class="go">Comparar →</span></div>`;
+    else if (saveAmt > 0.5) save = `<div class="save"><span>Ahorrás <b>${money(saveAmt)}</b> <span class="vs-long">vs. la más cara</span><span class="vs-short">vs. ${esc(storeName(worstOther.store))}</span>${mine < o.price ? ' <span class="why">con tu tarjeta</span>' : ''}</span><span class="go">Comparar →</span></div>`;
     else if (o.others.some(x => x.stock)) save = `<div class="save"><span>Mismo precio en otras tiendas</span><span class="go">Comparar →</span></div>`;
     else save = `<div class="save"><span>Solo esta tienda lo tiene con stock</span><span class="go">Ver ficha →</span></div>`;
     const stale = isStale(o.store) ? `<span class="stale">Precio del ${dmFromYmd(o.date)}</span>` : `<span class="perml">${money(o.price / o.ml)} por ml</span>`;
@@ -241,17 +247,21 @@
     const sz = p.sizes[mlWanted] || sizes.find(s => s.entries.some(e => e.offer)) || sizes[0];
     const ml = sz.ml;
     document.title = `${p.name} ${p.conc || ''} ${ml} ml · ScentFinder`;
-    const inStock = sz.entries.filter(e => e.stock).sort((a, b) => a.price - b.price);
+    const inStock = sz.entries.filter(e => e.stock).sort((a, b) => eff(a) - eff(b) || a.price - b.price);
     const out = sz.entries.filter(e => !e.stock).sort((a, b) => a.price - b.price);
     const best = inStock[0], worst = inStock[inStock.length - 1];
-    const bestOffer = sz.entries.filter(e => e.offer).sort((a, b) => a.price - b.price)[0];
-    const pct = bestOffer?.pct ?? best?.pct ?? 0;
+    const bestOffer = sz.entries.filter(e => e.offer).sort((a, b) => eff(a) - eff(b) || a.price - b.price)[0];
+    const pct = (bestOffer && withCard(bestOffer.store, bestOffer.price, bestOffer.list)?.totalPct) ?? bestOffer?.pct ?? best?.pct ?? 0;
     const absent = D.stores.filter(s => !sz.entries.some(e => e.store === s.id)).map(s => s.name);
 
     let verdict;
-    if (best && worst && worst.price > best.price)
-      verdict = `<div class="verdict">En <b>${esc(storeName(best.store))}</b> ahorrás <b class="g">${money(worst.price - best.price)}</b> en el frasco de ${ml} ml frente a la tienda más cara (${esc(storeName(worst.store))}).</div>`;
-    else if (best && inStock.length > 1)
+    const plainBest = [...inStock].sort((a, b) => a.price - b.price)[0];
+    if (best && worst && eff(worst) > eff(best) + 0.5) {
+      const withC = eff(best) < best.price;
+      verdict = `<div class="verdict">${withC
+        ? `Con <b>${esc(cardName())}</b>, el mejor precio es en <b>${esc(storeName(best.store))}</b>: <b class="g">${money(eff(best))}</b> (${esc(promoTxt(best).replace(/^con [^,]+, /, ''))}). Ahorrás <b class="g">${money(eff(worst) - eff(best))}</b> frente a la tienda más cara (${esc(storeName(worst.store))}).${plainBest && plainBest !== best ? ` Sin la promo, el más barato es ${esc(storeName(plainBest.store))} (${money(plainBest.price)}).` : ''}`
+        : `En <b>${esc(storeName(best.store))}</b> ahorrás <b class="g">${money(eff(worst) - eff(best))}</b> en el frasco de ${ml} ml frente a la tienda más cara (${esc(storeName(worst.store))}).`}</div>`;
+    } else if (best && inStock.length > 1)
       verdict = `<div class="verdict alt">Tiene el mismo precio en las ${inStock.length} tiendas con stock.</div>`;
     else if (best)
       verdict = `<div class="verdict alt">Solo <b>${esc(storeName(best.store))}</b> lo tiene con stock en ${ml} ml.</div>`;
@@ -306,7 +316,7 @@
           <h1>${esc(p.name)} <small>${esc(p.conc || '')}</small></h1>
           ${sz.ean ? `<span class="sub">EAN ${esc(sz.ean)}</span>` : ''}
         </div>
-        ${pct ? `<div class="s-badge"><span class="pct">−${pct}%</span><span>vs. su precio de lista${bestOffer ? ` en ${esc(storeName(bestOffer.store))}` : ''}</span></div>` : ''}
+        ${pct ? `<div class="s-badge"><span class="pct">−${pct}%</span><span>vs. su precio de lista${bestOffer ? ` en ${esc(storeName(bestOffer.store))}` : ''}${bestOffer && eff(bestOffer) < bestOffer.price ? `, con ${esc(cardName())}` : ''}</span></div>` : ''}
       </div>
       <div class="sizes" role="group" aria-label="Tamaño">
         ${sizes.map(s => `<a class="size" href="#/p/${encodeURIComponent(id)}/${s.ml}" aria-current="${s.ml === ml}">${s.ml} ml${s.entries.some(e => e.offer) ? '<span class="dot" title="En oferta"></span>' : ''}</a>`).join('')}
@@ -318,7 +328,7 @@
     <section class="stats">
       <div class="stat"><span class="lbl">Desde cuándo está en oferta</span><span class="v">${daysTxt}</span><span class="n">${esc(daysNote)}</span></div>
       <div class="stat"><span class="lbl">Precio más bajo visto</span><span class="v">${minTxt}</span><span class="n">${esc(minNote)}</span></div>
-      <div class="stat"><span class="lbl">Precio por ml</span><span class="v">${best ? money(best.price / ml) : '—'}</span><span class="n">${best ? `El mejor precio con stock, en ${esc(storeName(best.store))}.` : ''}</span></div>
+      <div class="stat"><span class="lbl">Precio por ml</span><span class="v">${best ? money(eff(best) / ml) : '—'}</span><span class="n">${best ? `El mejor precio con stock, en ${esc(storeName(best.store))}${eff(best) < best.price ? ` (con ${esc(cardName())})` : ''}.` : ''}</span></div>
     </section>
     <footer class="foot">La compra se hace en la tienda. Confirmá ahí el precio y el tamaño antes de pagar.</footer>`;
     window.scrollTo(0, 0);

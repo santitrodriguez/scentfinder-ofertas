@@ -111,6 +111,7 @@ h1.hero { margin: 6px 0 0; font-family: var(--serif); font-weight: 500; font-siz
 .save.alt b { color: var(--promo-ink); }
 .save .go { font-weight: 700; color: var(--link); white-space: nowrap; }
 .save .vs-short { display: none; }
+.save .why { color: var(--muted); font-size: 12px; }
 
 .more { align-self: center; font-weight: 700; font-size: 14px; padding: 12px 20px; border-radius: 10px; border: 1px solid var(--ink); background: var(--card); cursor: pointer; }
 .empty { margin: 0; padding: 28px; text-align: center; background: var(--card); border: 1px dashed #c9ced6; border-radius: 14px; color: var(--muted); }
