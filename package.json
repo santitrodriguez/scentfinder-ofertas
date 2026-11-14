@@ -1,0 +1,15 @@
+{
+  "name": "scentfinder-ofertas",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Perfumes de hombre en oferta en 6 perfumerías argentinas, comparados entre tiendas.",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "scrape": "node scripts/scrape.js",
+    "build": "node scripts/build.js",
+    "update": "node scripts/scrape.js && node scripts/build.js",
+    "serve": "node scripts/serve.js",
+    "check": "node scripts/check.js"
+  }
+}

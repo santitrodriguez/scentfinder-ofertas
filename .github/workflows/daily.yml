@@ -1,0 +1,65 @@
+name: Actualizar ofertas
+
+on:
+  schedule:
+    - cron: '0 10 * * *'   # 10:00 UTC = 7:00 hora Argentina
+  workflow_dispatch: {}      # botón "Run workflow" para correrlo a mano
+  push:
+    branches: [main]
+    paths: ['site/**']       # si cambia la página, se republica sin volver a leer precios
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: ofertas
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Leer precios de las tiendas
+        if: github.event_name != 'push'
+        run: npm run scrape
+        continue-on-error: true   # si una tienda falla, se usan sus datos anteriores
+
+      - name: Cruzar tiendas y armar ofertas.json
+        run: npm run build
+
+      - name: Guardar datos e historial en el repo
+        if: github.event_name != 'push'
+        run: |
+          git config user.name "scentfinder-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data history
+          git diff --cached --quiet || git commit -m "Ofertas $(TZ=America/Argentina/Buenos_Aires date +%F)"
+          git push
+
+      - name: Armar el sitio
+        run: |
+          mkdir -p _site/data
+          cp -r site/. _site/
+          cp data/ofertas.json _site/data/ofertas.json
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: update
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
