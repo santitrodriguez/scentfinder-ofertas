@@ -9,6 +9,14 @@ const dateAR = d => new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year: 'nume
 const now = new Date();
 const today = dateAR(now);
 const h = s => crypto.createHash('sha1').update(s).digest('hex').slice(0, 12);
+// Foto del producto en un tamaño liviano (las tiendas sirven la original en alta resolución).
+const imgSmall = u => !u ? null : u
+  .replace(/^http:/, 'https:')
+  .replace(/(\/arquivos\/ids\/\d+)(-\d+-\d+)?\//, '$1-300-300/')          // VTEX
+  .replace(/-(\d+)-(\d+)\.(webp|jpg|jpeg|png)$/i, '-480-0.$3');           // Tiendanube
+// Preferimos fotos de VTEX (fondo blanco y cuadradas) y después el resto.
+const IMG_ORDER = ['juleriaque', 'rouge', 'beauty24', 'pigmento', 'ruizyroca', 'parfumerie'];
+const pickImage = list => imgSmall([...list].filter(r => r.image).sort((a, b) => IMG_ORDER.indexOf(a.store) - IMG_ORDER.indexOf(b.store))[0]?.image);
 const isOffer = r => r.stock && r.list > 0 && r.price <= r.list * (1 - MIN_DISCOUNT) + 0.5;
 const pctOf = r => (r.list > r.price ? Math.round((1 - r.price / r.list) * 100) : 0);
 
@@ -146,13 +154,14 @@ for (const [pk, cis] of byProduct) {
     }
     const ids = [...new Set(ci.list.flatMap(r => [r.ean ? h('ean|' + r.ean) : null, h('name|' + r.sizeKey)]).filter(Boolean))];
     const { days, minSeen } = histFor(ids);
-    const size = { ml: ci.ml, ean: mode(ci.list.map(r => r.ean)), entries, daysOnSale: days, minSeen };
+    const size = { ml: ci.ml, ean: mode(ci.list.map(r => r.ean)), image: pickImage(ci.list), entries, daysOnSale: days, minSeen };
     if (sizes[ci.ml]) { // dos grupos con el mismo ml (EAN distinto sin nombre común): nos quedamos con el de más tiendas
       if (sizes[ci.ml].entries.length >= entries.length) continue;
     }
     sizes[ci.ml] = size;
   }
 
+  const productImage = pickImage(all);
   let hasOffer = false;
   for (const size of Object.values(sizes)) {
     for (const e of size.entries) {
@@ -165,13 +174,14 @@ for (const [pk, cis] of byProduct) {
         id: `${id}--${size.ml}--${e.store}`, productId: id,
         brand, name, conc: conc_, ml: size.ml, store: e.store,
         price: e.price, list: e.list, pct: e.pct, stock: e.stock, url: e.url, ean: e.ean || size.ean || null, date: e.date,
+        image: size.image || productImage,
         save: worst && worst.price > e.price ? worst.price - e.price : 0, saveVs: worst?.store || null,
         others: others.map(x => ({ store: x.store, price: x.price, stock: x.stock, offer: x.offer })).sort((a, b) => (b.stock - a.stock) || (a.price - b.price)),
         daysOnSale: size.daysOnSale[e.store] || 1, minSeen: size.minSeen,
       });
     }
   }
-  if (hasOffer) products[id] = { brand, name, conc: conc_, sizes };
+  if (hasOffer) products[id] = { brand, name, conc: conc_, image: productImage, sizes };
 }
 
 offers.sort((a, b) => b.pct - a.pct || a.price - b.price);

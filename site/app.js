@@ -28,6 +28,8 @@
   const isStale = id => { const m = storeMeta(id); return m && m.lastRead && ymd(m.lastRead) !== ymd(D.generatedAt); };
   const LOGO = '<svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true"><rect x="9" y="1.5" width="8" height="5" rx="1.2" fill="currentColor"/><rect x="11.5" y="6" width="3" height="3" fill="currentColor"/><rect x="4" y="9" width="18" height="15.5" rx="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M8 17.5h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
 
+  // Foto del perfume; si no carga, queda un frasco dibujado en su lugar
+  const thumb = (src, alt, cls = 'thumb') => `<span class="${cls}">${src ? `<img src="${esc(src)}" alt="${esc(alt)}" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="this.remove()">` : ''}${LOGO}</span>`;
   const SIZES = [['all', 'Todos'], ['s', 'Hasta 60 ml'], ['m', '75–125 ml'], ['l', '150 ml o más']];
   const inSize = (ml, k) => k === 'all' || (k === 's' ? ml <= 60 : k === 'm' ? ml > 60 && ml < 150 : ml >= 150);
   const DISC = [[0, 'Todos'], [20, '20% o más'], [30, '30% o más'], [40, '40% o más']];
@@ -142,6 +144,7 @@
     return `
     <a class="card" href="#/p/${encodeURIComponent(o.productId)}/${o.ml}">
       <div class="c-head">
+        ${thumb(o.image, `${o.brand} ${o.name}`)}
         <div class="c-id">
           <span class="brand">${esc(o.brand)}</span>
           <span class="pname">${esc(o.name)}</span>
@@ -241,6 +244,7 @@
     </nav>
     <main class="sheet">
       <div class="s-head">
+        ${thumb(sz.image || p.image, `${p.brand} ${p.name}`, 'thumb big')}
         <div class="s-id">
           <span class="brand">${esc(p.brand)}</span>
           <h1>${esc(p.name)} <small>${esc(p.conc || '')}</small></h1>
