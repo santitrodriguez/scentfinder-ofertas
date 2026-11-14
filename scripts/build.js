@@ -190,7 +190,7 @@ offers.sort((a, b) => b.pct - a.pct || a.price - b.price);
 let promos = { cards: [], promos: [] };
 if (fs.existsSync('data/promos.json')) {
   const p = JSON.parse(fs.readFileSync('data/promos.json', 'utf8'));
-  promos = { cards: p.cards || [], promos: (p.promos || []).filter(x => (!x.until || x.until >= today) && (!x.from || x.from <= today)) };
+  promos = { cards: p.cards || [], promos: (p.promos || []).filter(x => x.channel !== 'sucursal' && (!x.until || x.until >= today) && (!x.from || x.from <= today)) };
 }
 const out = {
   generatedAt: now.toISOString(), date: today, minDiscount: MIN_DISCOUNT,

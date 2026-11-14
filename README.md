@@ -34,7 +34,7 @@ Para agregar o cambiar una promo, editá ese archivo desde GitHub (lápiz ✏️
 - `card`: la tarjeta (tiene que estar en `cards`). Para sumar otra tarjeta, agregala a `cards`.
 - `store`: `juleriaque`, `rouge`, `beauty24`, `pigmento`, `parfumerie` o `ruizyroca`.
 - `type`: `reintegro`, `descuento` o `cuotas`. `pct`: el porcentaje. `tope`: monto máximo de reintegro en $ (`null` = sin tope).
-- `days`: `["martes"]`, `["todos"]`, etc. `channel`: `web`, `sucursal` o `ambos`.
+- `days`: `["martes"]`, `["todos"]`, etc. `channel`: `web` o `ambos`. Las promos exclusivas de sucursal no se cargan ni se avisan: solo cuenta lo que vale comprando online.
 - `until`: último día de vigencia (AAAA-MM-DD). Pasada esa fecha deja de mostrarse sola.
 
 Al guardar el cambio, la página se republica sola en unos minutos.

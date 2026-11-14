@@ -15,6 +15,8 @@ const SOURCES = [
   { store: 'Ruiz y Roca', url: 'https://www.ruizyrocaperfumeria.com/promocionesbancarias' },
   { store: 'Parfumerie', url: 'https://www.parfumerie.com.ar/metodos-de-pago' },
 ];
+// Promos exclusivas de sucursal: se ignoran (solo interesa comprar online)
+const ONLY_STORE = /exclusiv\w* (en )?sucursal|solo (en )?sucursal|sucursales f[ií]sicas|no aplica en (la )?tienda on-?line/i;
 const FILE = 'data/promo-watch.json';
 const OUT = 'promo-changes.md';
 
@@ -73,7 +75,7 @@ const changes = [];
 for (const src of SOURCES) {
   try {
     const html = (await get(src.url)).body;
-    const b = src.parse ? src.parse(html) : blocks(toLines(html));
+    const b = (src.parse ? src.parse(html) : blocks(toLines(html))).filter(x => !ONLY_STORE.test(x));
     next[src.store] = { url: src.url, checkedAt: new Date().toISOString(), blocks: b };
     const old = prev[src.store]?.blocks;
     if (!old) { console.log(`[${src.store}] primera lectura: ${b.length} menciones`); continue; }

@@ -5,8 +5,7 @@
   const app = document.getElementById('app');
   let D = null;
   const S = { q: '', store: 'all', min: 0, size: 'all', sort: 'pct', shown: PAGE, card: '' };
-  S.where = 'online';
-  try { S.card = localStorage.getItem('sf-card') || ''; S.where = localStorage.getItem('sf-where') || 'online'; } catch (e) { /* sin almacenamiento */ }
+  try { S.card = localStorage.getItem('sf-card') || ''; } catch (e) { /* sin almacenamiento */ }
 
   // ---------- utilidades ----------
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -37,7 +36,8 @@
   const DAY_LABEL = { lunes: 'lunes', martes: 'martes', miercoles: 'miércoles', jueves: 'jueves', viernes: 'viernes', sabado: 'sábados', domingo: 'domingos' };
   const todayDay = () => DAYS[new Date(new Date().toLocaleString('en-US', { timeZone: TZ })).getDay()];
   const cardName = () => D.promos?.cards.find(c => c.id === S.card)?.name || '';
-  const usable = p => S.where === 'todo' || p.channel !== 'sucursal';
+  // las promos exclusivas de sucursal no se tienen en cuenta (solo se compra online)
+  const usable = p => p.channel !== 'sucursal';
   const promosFor = store => !S.card ? [] : (D.promos?.promos || []).filter(p => p.card === S.card && p.store === store && usable(p));
   const daysTxt = p => p.days.includes('todos') ? 'todos los días'
     : p.days.length >= 6 ? 'todos los días excepto ' + DAYS.slice(1).concat('domingo').filter(d => !p.days.includes(d)).map(d => DAY_LABEL[d]).join(' y ')
@@ -145,7 +145,7 @@
         <span class="sep" aria-hidden="true"></span>
         <span class="lbl">Tamaño</span>${chips(SIZES, S.size, 'size')}
       </div>
-      ${D.promos?.cards?.length ? `<div class="row chips" role="group" aria-label="Mi tarjeta"><span class="lbl">Mi tarjeta</span>${chips([['', 'Ninguna'], ...D.promos.cards.map(c => [c.id, c.name])], S.card, 'card')}${S.card ? `<span class="sep" aria-hidden="true"></span><span class="lbl">Compro</span>${chips([['online', 'Solo online'], ['todo', 'También en sucursal']], S.where, 'where')}` : ''}</div>
+      ${D.promos?.cards?.length ? `<div class="row chips" role="group" aria-label="Mi tarjeta"><span class="lbl">Mi tarjeta</span>${chips([['', 'Ninguna'], ...D.promos.cards.map(c => [c.id, c.name])], S.card, 'card')}</div>
       <p class="card-note" id="cardnote"></p>` : ''}
     </section>
     <p class="sr" id="resumen" aria-live="polite"></p>
@@ -159,8 +159,8 @@
     document.getElementById('orden').addEventListener('change', e => { S.sort = e.target.value; S.shown = PAGE; renderGrid(); });
     app.querySelectorAll('.chip').forEach(b => b.addEventListener('click', () => {
       const k = b.dataset.k; S[k] = k === 'min' ? +b.dataset.v : b.dataset.v; S.shown = PAGE;
-      if (k === 'card' || k === 'where') {
-        try { localStorage.setItem('sf-card', S.card); localStorage.setItem('sf-where', S.where); } catch (e) { /* sin almacenamiento */ }
+      if (k === 'card') {
+        try { localStorage.setItem('sf-card', S.card); } catch (e) { /* sin almacenamiento */ }
         if (!S.card && S.sort === 'final') S.sort = 'pct';
         return renderHome();
       }
@@ -219,15 +219,13 @@
     if (!S.card) { el.textContent = ''; el.hidden = true; return; }
     const ps = (D.promos?.promos || []).filter(p => p.card === S.card);
     const re = ps.filter(p => p.type !== 'cuotas' && usable(p));
-    const hidden = ps.filter(p => p.type !== 'cuotas' && !usable(p));
     el.hidden = false;
     if (!re.length) {
-      el.innerHTML = `Comprando online, hoy ninguna tienda tiene reintegro con ${esc(cardName())}; solo cuotas sin interés.` +
-        (hidden.length ? ` Hay ${hidden.length === 1 ? 'una promo' : hidden.length + ' promos'} solo en sucursal (${hidden.map(p => `${esc(storeName(p.store))} ${p.pct}% ${esc(daysTxt(p))}`).join('; ')}) que no se cuenta: elegí “También en sucursal” si podés ir a un local.` : '');
+      el.innerHTML = `Hoy ninguna tienda tiene reintegro online con ${esc(cardName())}; solo cuotas sin interés.`;
       return;
     }
     el.innerHTML = re.length
-      ? re.map(p => `<b>${esc(storeName(p.store))}</b>: ${p.pct}% de reintegro${p.tope ? ` (tope ${money(p.tope)})` : ' sin tope'}, ${esc(daysTxt(p))}, ${esc(chanTxt(p))}${p.until ? `, hasta el ${dmFromYmd(p.until)}` : ''}${isToday(p) ? ' · <b class="hoy">¡hoy aplica!</b>' : ''}.`).join(' ') + ` El precio final se calcula sobre el precio de la web: en sucursal puede ser distinto. En la web, ninguna de las 6 tiendas tiene reintegro con ${esc(cardName())}; solo cuotas sin interés.`
+      ? re.map(p => `<b>${esc(storeName(p.store))}</b>: ${p.pct}% de reintegro${p.tope ? ` (tope ${money(p.tope)})` : ' sin tope'}, ${esc(daysTxt(p))}, ${esc(chanTxt(p))}${p.until ? `, hasta el ${dmFromYmd(p.until)}` : ''}${isToday(p) ? ' · <b class="hoy">¡hoy aplica!</b>' : ''}.`).join(' ')
       : `Hoy ninguna tienda tiene reintegro con ${esc(cardName())}; solo cuotas sin interés.`;
   }
 
@@ -387,7 +385,7 @@
       <section class="box">
         <h2>5 · Promos bancarias</h2>
         <p>Elegí tu tarjeta en “Mi tarjeta” y cada oferta muestra el precio final con el reintegro sumado, y en qué días y canal aplica.</p>
-        <ul>${(D.promos?.promos || []).map(p => `<li><b>${esc(storeName(p.store))}</b> · ${esc(D.promos.cards.find(c => c.id === p.card)?.name || p.card)}: ${esc(p.detail)}${p.until ? ` Hasta el ${dmFromYmd(p.until)}.` : ''}</li>`).join('') || '<li>No hay promos cargadas.</li>'}</ul>
+        <ul>${(D.promos?.promos || []).filter(usable).map(p => `<li><b>${esc(storeName(p.store))}</b> · ${esc(D.promos.cards.find(c => c.id === p.card)?.name || p.card)}: ${esc(p.detail)}${p.until ? ` Hasta el ${dmFromYmd(p.until)}.` : ''}</li>`).join('') || '<li>No hay promos cargadas.</li>'}</ul>
         <p class="note">Las promos se revisan a mano en la página de cada tienda (última revisión: ${dmFromYmd((D.promos?.promos || []).map(p => p.checked).sort().pop() || '')}). Confirmá siempre en la tienda o en la app del banco antes de pagar.</p>
       </section>
       <section class="box warm">

@@ -1,5 +1,5 @@
 {
-  "_ayuda": "Promos bancarias por tienda. Editá este archivo para agregar, cambiar o sacar promos. type: reintegro | descuento | cuotas. days: lunes..domingo o 'todos'. channel: web | sucursal | ambos. tope: monto máximo de reintegro en $ (null = sin tope). until: último día de vigencia (AAAA-MM-DD); pasada esa fecha la promo deja de mostrarse sola. from (opcional): primer día de vigencia; antes de esa fecha no se muestra.",
+  "_ayuda": "Promos bancarias por tienda. Editá este archivo para agregar, cambiar o sacar promos. type: reintegro | descuento | cuotas. days: lunes..domingo o 'todos'. channel: web | ambos (las promos exclusivas de sucursal no se cargan). tope: monto máximo de reintegro en $ (null = sin tope). until: último día de vigencia (AAAA-MM-DD); pasada esa fecha la promo deja de mostrarse sola. from (opcional): primer día de vigencia; antes de esa fecha no se muestra.",
   "cards": [
     {
       "id": "galicia-eminent",
@@ -7,23 +7,6 @@
     }
   ],
   "promos": [
-    {
-      "card": "galicia-eminent",
-      "store": "juleriaque",
-      "type": "reintegro",
-      "pct": 15,
-      "tope": null,
-      "days": [
-        "martes"
-      ],
-      "channel": "sucursal",
-      "cuotas": 6,
-      "minAmount": null,
-      "until": "2026-11-24",
-      "checked": "2026-11-14",
-      "detail": "15% de reintegro sin tope + hasta 6 cuotas sin interés. Martes, exclusivo sucursales. Visa débito y crédito Visa, Mastercard y Amex de la cartera Éminent.",
-      "source": "https://www.juleriaque.com.ar/beneficios"
-    },
     {
       "card": "galicia-eminent",
       "store": "juleriaque",
