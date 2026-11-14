@@ -71,6 +71,7 @@
       const r = await fetch('data/ofertas.json', { cache: 'no-cache' });
       if (!r.ok) throw new Error(r.status);
       D = await r.json();
+      D._perfumes = new Set(D.offers.map(o => o.productId + '|' + o.ml)).size;
       for (const o of D.offers) o._q = fold(`${o.brand} ${o.name} ${o.conc || ''} ${o.ml}ml ${storeName(o.store)}`);
       route();
     } catch (e) {
@@ -83,14 +84,27 @@
     const list = D.offers.filter(o =>
       (S.store === 'all' || o.store === S.store) && bestPct(o) >= S.min && inSize(o.ml, S.size) &&
       words.every(w => o._q.includes(w)));
+    // una tarjeta por perfume y tamaño: se queda la mejor oferta (precio con tarjeta si hay) como principal
+    const groups = new Map();
+    for (const o of list) {
+      const k = o.productId + '|' + o.ml, cur = groups.get(k);
+      if (!cur || eff(o) < eff(cur) - 0.5 || (Math.abs(eff(o) - eff(cur)) <= 0.5 && o.pct > cur.pct)) groups.set(k, o);
+    }
+    const heads = [...groups.values()];
     const by = {
-      pct: (a, b) => bestPct(b) - bestPct(a) || a.price - b.price,
+      pct: (a, b) => bestPct(b) - bestPct(a) || eff(a) - eff(b),
       final: (a, b) => finalPrice(a) - finalPrice(b) || b.pct - a.pct,
-      price: (a, b) => a.price - b.price || b.pct - a.pct,
-      save: (a, b) => b.save - a.save || b.pct - a.pct,
+      price: (a, b) => eff(a) - eff(b) || b.pct - a.pct,
+      save: (a, b) => groupSave(b) - groupSave(a) || b.pct - a.pct,
       brand: (a, b) => a.brand.localeCompare(b.brand, 'es') || a.name.localeCompare(b.name, 'es') || a.ml - b.ml || a.price - b.price,
     }[S.sort] || ((a, b) => b.pct - a.pct);
-    return list.sort(by);
+    return heads.sort(by);
+  }
+  const entriesOf = o => D.products[o.productId]?.sizes?.[o.ml]?.entries || [];
+  // ahorro = tienda más cara con stock − el precio de la tarjeta principal
+  function groupSave(o) {
+    const st = entriesOf(o).filter(e => e.stock && e.store !== o.store);
+    return st.length ? Math.max(0, Math.max(...st.map(eff)) - eff(o)) : 0;
   }
 
   // ---------- home ----------
@@ -105,7 +119,7 @@
       </div>
       <div class="top-r">
         <span><span class="long">Actualizado ${relDay(D.generatedAt)}</span>${dm(D.generatedAt)} · ${hm(D.generatedAt)}</span>
-        <span class="count"><b>${D.count.toLocaleString('es-AR')} ofertas</b> en ${stores} perfumerías</span>
+        <span class="count"><b>${D._perfumes.toLocaleString('es-AR')} perfumes en oferta</b> en ${stores} perfumerías</span>
         <a class="how" href="#/como-funciona">Cómo funciona</a>
       </div>
     </header>
@@ -179,17 +193,29 @@
   }
 
   function card(o) {
-    const others = o.others.slice(0, 5);
-    const mine = eff(o);
-    const cheaper = o.others.filter(x => x.stock && eff(x) < mine - 0.5).sort((a, b) => eff(a) - eff(b))[0];
-    const worstOther = o.others.filter(x => x.stock).sort((a, b) => eff(b) - eff(a))[0];
-    const saveAmt = worstOther ? eff(worstOther) - mine : 0;
+    const entries = entriesOf(o);
+    const inStock = entries.filter(e => e.stock).sort((a, b) => eff(a) - eff(b) || a.price - b.price);
+    const out = entries.filter(e => !e.stock);
+    const best = inStock[0];
+    const multi = inStock.length > 1;
+    const allSame = multi && inStock.every(e => Math.abs(eff(e) - eff(best)) <= 0.5);
+    const rows = [...inStock, ...out].map(e => {
+      const isHead = e.store === o.store, isBest = multi && !allSame && e.stock && eff(e) <= eff(best) + 0.5;
+      const withC = e.stock && eff(e) < e.price - 0.5;
+      return `<div class="o-row${e.stock ? '' : ' out'}${isHead ? ' head' : ''}">
+        <span class="st">${esc(storeName(e.store))}${isBest ? '<i class="tag best">Mejor precio</i>' : ''}${e.stock && e.offer ? `<i class="tag promo">−${e.pct}%</i>` : ''}</span>
+        <b>${!e.stock ? 'Sin stock' : withC ? `${money(eff(e))}<small> con tarjeta</small>` : money(e.price)}</b>
+      </div>`;
+    }).join('');
+    const saveAmt = groupSave(o);
     let save;
-    if (cheaper) save = `<div class="save alt"><span>Más barato en <b>${esc(storeName(cheaper.store))}</b>: <b>${money(eff(cheaper))}</b>${promoTxt(cheaper) ? ` <span class="why">(${esc(promoTxt(cheaper))})</span>` : ''}</span><span class="go">Comparar →</span></div>`;
-    else if (saveAmt > 0.5) save = `<div class="save"><span>Ahorrás <b>${money(saveAmt)}</b> <span class="vs-long">vs. la más cara</span><span class="vs-short">vs. ${esc(storeName(worstOther.store))}</span>${mine < o.price ? ' <span class="why">con tu tarjeta</span>' : ''}</span><span class="go">Comparar →</span></div>`;
-    else if (o.others.some(x => x.stock)) save = `<div class="save"><span>Mismo precio en otras tiendas</span><span class="go">Comparar →</span></div>`;
-    else save = `<div class="save"><span>Solo esta tienda lo tiene con stock</span><span class="go">Ver ficha →</span></div>`;
+    if (best && best.store !== o.store && eff(best) < eff(o) - 0.5)
+      save = `<div class="save alt"><span>Más barato en <b>${esc(storeName(best.store))}</b>: <b>${money(eff(best))}</b>${best.offer ? '' : ' <span class="why">(sin oferta)</span>'}</span><span class="go">Comparar →</span></div>`;
+    else if (saveAmt > 0.5) save = `<div class="save"><span>Ahorrás <b>${money(saveAmt)}</b> vs. la más cara</span><span class="go">Comparar →</span></div>`;
+    else if (multi) save = `<div class="save"><span>Mismo precio en ${inStock.length} tiendas</span><span class="go">Comparar →</span></div>`;
+    else save = `<div class="save"><span>Solo ${esc(storeName(o.store))} lo tiene con stock</span><span class="go">Ver ficha →</span></div>`;
     const stale = isStale(o.store) ? `<span class="stale">Precio del ${dmFromYmd(o.date)}</span>` : `<span class="perml">${money(o.price / o.ml)} por ml</span>`;
+    const sameAs = inStock.filter(e => e.store !== o.store && Math.abs(eff(e) - eff(o)) <= 0.5).map(e => storeName(e.store));
     return `
     <a class="card" href="#/p/${encodeURIComponent(o.productId)}/${o.ml}">
       <div class="c-head">
@@ -199,15 +225,14 @@
           <span class="pname">${esc(o.name)}</span>
           <span class="spec">${esc(o.conc || 'Fragancia')} · ${o.ml} ml</span>
         </div>
-        <span class="pct">−${o.pct}%</span>
+        <span class="pct">−${bestPct(o)}%</span>
       </div>
       <div class="prices"><span class="price">${money(o.price)}</span><s class="was">${money(o.list)}</s></div>
-      <div class="where"><span>en <b>${esc(storeName(o.store))}</b></span>${stale}</div>
+      <div class="where"><span>en <b>${esc(storeName(o.store))}</b>${sameAs.length ? `<span class="also">${sameAs.length > 1 ? ', ' + esc(sameAs.slice(0, -1).join(', ')) : ''} y ${esc(sameAs.at(-1))}</span>` : ''}</span>${stale}</div>
       ${bankLine(o.store, o.price, o.list)}
       <div class="others">
-        <span class="lbl">En otras tiendas</span>
-        ${others.length ? others.map(x => `<div class="o-row${x.stock ? '' : ' out'}"><span>${esc(storeName(x.store))}</span><b>${x.stock ? money(x.price) : 'Sin stock'}</b></div>`).join('')
-          : `<span class="o-none">Ninguna otra tienda lo tiene en ${o.ml} ml.</span>`}
+        <span class="lbl">Precios en ${entries.length} ${entries.length === 1 ? 'tienda' : 'tiendas'}</span>
+        ${rows}
       </div>
       ${save}
     </a>`;
@@ -233,7 +258,7 @@
     cardNote();
     const list = filtered();
     const grid = document.getElementById('grid'), after = document.getElementById('after');
-    document.getElementById('resumen').textContent = `${list.length} ofertas con estos filtros`;
+    document.getElementById('resumen').textContent = `${list.length} perfumes con estos filtros`;
     if (!list.length) {
       grid.innerHTML = '';
       after.innerHTML = '<p class="empty">No hay ofertas con esos filtros hoy. Probá con otra tienda o un descuento menor.</p>';
@@ -241,7 +266,7 @@
     }
     grid.innerHTML = list.slice(0, S.shown).map(card).join('');
     after.innerHTML = list.length > S.shown
-      ? `<div style="display:flex;justify-content:center"><button type="button" class="more" id="more">Ver más ofertas (${list.length - S.shown} restantes)</button></div>` : '';
+      ? `<div style="display:flex;justify-content:center"><button type="button" class="more" id="more">Ver más perfumes (${list.length - S.shown} restantes)</button></div>` : '';
     document.getElementById('more')?.addEventListener('click', () => { S.shown += PAGE; renderGrid(); });
   }
 

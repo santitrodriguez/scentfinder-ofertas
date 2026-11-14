@@ -100,7 +100,12 @@ h1.hero { margin: 6px 0 0; font-family: var(--serif); font-weight: 500; font-siz
 .others .lbl { font-size: 11px; }
 .o-row { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; font-variant-numeric: tabular-nums; }
 .o-row span:first-child { color: var(--ink-2); }
-.o-row b { font-weight: 600; }
+.o-row b { font-weight: 600; white-space: nowrap; }
+.o-row b small { font-weight: 500; color: var(--link); font-size: 11px; margin-left: 3px; }
+.o-row .st { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; min-width: 0; }
+.o-row .tag { font-style: normal; font-size: 9.5px; padding: 2px 5px; border-radius: 4px; }
+.o-row.head span.st { color: var(--ink); font-weight: 700; }
+.where .also { color: var(--muted); font-weight: 400; }
 .o-row.out { color: var(--strike); }
 .o-row.out span:first-child { color: var(--strike); }
 .o-row.out b { font-weight: 500; }
@@ -216,7 +221,7 @@ h1.page { margin: 0; font-family: var(--serif); font-weight: 500; font-size: 40p
   .price { font-size: 22px; }
   .was { font-size: 12.5px; }
   .card .where .perml { display: none; }
-  .card .others { display: none; }
+  .card .others { gap: 5px; padding-top: 8px; }
   .bank { padding: 7px 10px; }
   .bank b { font-size: 15px; }
   .save { border-radius: 9px; padding: 7px 10px; font-size: 12.5px; }
