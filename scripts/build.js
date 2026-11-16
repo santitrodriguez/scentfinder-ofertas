@@ -3,6 +3,7 @@
 import fs from 'node:fs';
 import crypto from 'node:crypto';
 import { STORES, MIN_DISCOUNT, MIN_ML, MAX_ML, TZ } from '../config.js';
+import { categoryOf } from '../lib/categories.js';
 import { conc, brandKey, nameKey, displayName, brandDisplay, isExcluded, cleanEan, norm } from '../lib/normalize.js';
 
 const dateAR = d => new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(d));
@@ -162,6 +163,7 @@ for (const [pk, cis] of byProduct) {
   }
 
   const productImage = pickImage(all);
+  const cat = categoryOf(rep.brand, rep.title);
   let hasOffer = false;
   for (const size of Object.values(sizes)) {
     for (const e of size.entries) {
@@ -172,7 +174,7 @@ for (const [pk, cis] of byProduct) {
       const worst = stocked.sort((a, b) => b.price - a.price)[0];
       offers.push({
         id: `${id}--${size.ml}--${e.store}`, productId: id,
-        brand, name, conc: conc_, ml: size.ml, store: e.store,
+        brand, name, conc: conc_, cat, ml: size.ml, store: e.store,
         price: e.price, list: e.list, pct: e.pct, stock: e.stock, url: e.url, ean: e.ean || size.ean || null, date: e.date,
         image: size.image || productImage,
         save: worst && worst.price > e.price ? worst.price - e.price : 0, saveVs: worst?.store || null,
@@ -181,7 +183,7 @@ for (const [pk, cis] of byProduct) {
       });
     }
   }
-  if (hasOffer) products[id] = { brand, name, conc: conc_, image: productImage, sizes };
+  if (hasOffer) products[id] = { brand, name, conc: conc_, cat, image: productImage, sizes };
 }
 
 offers.sort((a, b) => b.pct - a.pct || a.price - b.price);

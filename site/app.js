@@ -4,7 +4,7 @@
   const PAGE = 60;
   const app = document.getElementById('app');
   let D = null;
-  const S = { q: '', store: 'all', min: 0, size: 'all', sort: 'pct', shown: PAGE, card: '' };
+  const S = { q: '', store: 'all', min: 0, size: 'all', sort: 'pct', shown: PAGE, card: '', price: 'all', cat: 'all' };
   try { S.card = localStorage.getItem('sf-card') || ''; } catch (e) { /* sin almacenamiento */ }
 
   // ---------- utilidades ----------
@@ -59,6 +59,10 @@
   const eff = x => withCard(x.store, x.price, x.list || x.price)?.final ?? x.price;
   const promoTxt = x => { const w = withCard(x.store, x.price, x.list || x.price); return w ? `con ${cardName()}, ${w.promo.pct}% de reintegro ${daysTxt(w.promo)}, ${chanTxt(w.promo)}` : ''; };
 
+  const PRICES = [['all', 'Todos'], ['p1', 'Hasta $50.000'], ['p2', '$50.000 a $100.000'], ['p3', '$100.000 a $200.000'], ['p4', 'Más de $200.000']];
+  const inPrice = (v, k) => k === 'all' || (k === 'p1' ? v <= 50000 : k === 'p2' ? v > 50000 && v <= 100000 : k === 'p3' ? v > 100000 && v <= 200000 : v > 200000);
+  const CATS = [['all', 'Todos'], ['disenador', 'Diseñador'], ['nicho', 'Nicho'], ['arabe', 'Árabes'], ['catalogo', 'Catálogo']];
+  const catName = c => (CATS.find(x => x[0] === c) || [, ''])[1];
   const SIZES = [['all', 'Todos'], ['s', 'Hasta 60 ml'], ['m', '75–125 ml'], ['l', '150 ml o más']];
   const inSize = (ml, k) => k === 'all' || (k === 's' ? ml <= 60 : k === 'm' ? ml > 60 && ml < 150 : ml >= 150);
   const DISC = [[0, 'Todos'], [20, '20% o más'], [30, '30% o más'], [40, '40% o más']];
@@ -83,6 +87,7 @@
     const words = fold(S.q).split(/\s+/).filter(Boolean);
     const list = D.offers.filter(o =>
       (S.store === 'all' || o.store === S.store) && bestPct(o) >= S.min && inSize(o.ml, S.size) &&
+      inPrice(eff(o), S.price) && (S.cat === 'all' || o.cat === S.cat) &&
       words.every(w => o._q.includes(w)));
     // una tarjeta por perfume y tamaño: se queda la mejor oferta (precio con tarjeta si hay) como principal
     const groups = new Map();
@@ -100,6 +105,7 @@
     }[S.sort] || ((a, b) => b.pct - a.pct);
     return heads.sort(by);
   }
+  const catCount = c => new Set(D.offers.filter(o => o.cat === c).map(o => o.productId + '|' + o.ml)).size;
   const entriesOf = o => D.products[o.productId]?.sizes?.[o.ml]?.entries || [];
   // ahorro = tienda más cara con stock − el precio de la tarjeta principal
   function groupSave(o) {
@@ -159,6 +165,8 @@
         <span class="sep" aria-hidden="true"></span>
         <span class="lbl">Tamaño</span>${chips(SIZES, S.size, 'size')}
       </div>
+      <div class="row chips" role="group" aria-label="Tipo de perfume"><span class="lbl">Tipo</span>${chips(CATS.map(([v, t]) => [v, v === 'all' ? t : `${t} (${catCount(v)})`]), S.cat, 'cat')}</div>
+      <div class="row chips" role="group" aria-label="Precio"><span class="lbl">Precio</span>${chips(PRICES, S.price, 'price')}</div>
       ${D.promos?.cards?.length ? `<div class="row chips" role="group" aria-label="Mi tarjeta"><span class="lbl">Mi tarjeta</span>${chips([['', 'Ninguna'], ...D.promos.cards.map(c => [c.id, c.name])], S.card, 'card')}</div>
       <p class="card-note" id="cardnote"></p>` : ''}
     </section>
@@ -223,7 +231,7 @@
         <div class="c-id">
           <span class="brand">${esc(o.brand)}</span>
           <span class="pname">${esc(o.name)}</span>
-          <span class="spec">${esc(o.conc || 'Fragancia')} · ${o.ml} ml</span>
+          <span class="spec">${esc(o.conc || 'Fragancia')} · ${o.ml} ml${o.cat && o.cat !== 'disenador' ? ` · <span class="cat">${esc(catName(o.cat))}</span>` : ''}</span>
         </div>
         <span class="pct">−${bestPct(o)}%</span>
       </div>
@@ -345,7 +353,7 @@
         <div class="s-id">
           <span class="brand">${esc(p.brand)}</span>
           <h1>${esc(p.name)} <small>${esc(p.conc || '')}</small></h1>
-          ${sz.ean ? `<span class="sub">EAN ${esc(sz.ean)}</span>` : ''}
+          <span class="sub">${esc(catName(p.cat || 'disenador'))}${sz.ean ? ` · EAN ${esc(sz.ean)}` : ''}</span>
         </div>
         ${pct ? `<div class="s-badge"><span class="pct">−${pct}%</span><span>vs. su precio de lista${bestOffer ? ` en ${esc(storeName(bestOffer.store))}` : ''}${bestOffer && eff(bestOffer) < bestOffer.price ? `, con ${esc(cardName())}` : ''}</span></div>` : ''}
       </div>
@@ -390,6 +398,7 @@
           <li>Descuento de al menos <b>${minPct}%</b>.</li>
           <li>Con stock en ese tamaño.</li>
           <li>Cualquier perfume de hombre de cualquier marca, de 30 a 200 ml.</li>
+          <li>Tipo según la marca: <b>Diseñador</b> (casas de moda y lujo), <b>Nicho</b> (Creed, Parfums de Marly…), <b>Árabes</b> (Lattafa, Armaf, Hamidi…) y <b>Catálogo</b> (masivos y nacionales: Banderas, Kevingston, Benetton…).</li>
           <li>Se excluyen sets, kits, estuches, testers, desodorantes, geles, recargas, miniaturas y combos.</li>
         </ul>
       </section>

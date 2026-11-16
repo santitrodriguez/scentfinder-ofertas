@@ -105,6 +105,7 @@ h1.hero { margin: 6px 0 0; font-family: var(--serif); font-weight: 500; font-siz
 .o-row .st { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; min-width: 0; }
 .o-row .tag { font-style: normal; font-size: 9.5px; padding: 2px 5px; border-radius: 4px; }
 .o-row.head span.st { color: var(--ink); font-weight: 700; }
+.spec .cat { color: var(--link); }
 .where .also { color: var(--muted); font-weight: 400; }
 .o-row.out { color: var(--strike); }
 .o-row.out span:first-child { color: var(--strike); }

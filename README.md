@@ -25,6 +25,10 @@ MIN_DISCOUNT=0.2 npm run build
 
 Para cambiarlo en la actualización diaria, editá `config.js` y subí el cambio. El rango de tamaños (`MIN_ML`, `MAX_ML`) está en el mismo archivo.
 
+## Tipo de perfume (Diseñador, Nicho, Árabes, Catálogo)
+
+Se decide por la marca en [lib/categories.js](lib/categories.js). Las marcas que no están en ninguna lista cuentan como **Diseñador**. Para mover una marca, agregala (en minúsculas y sin acentos) a la lista `ARABE`, `NICHO` o `CATALOGO`.
+
 ## Promos bancarias (Mi tarjeta)
 
 Las promos se cargan a mano en [data/promos.json](data/promos.json), porque cada tienda las publica distinto (muchas veces como imágenes) y cambian todos los meses. En la página, "Mi tarjeta" muestra el precio final con el reintegro sumado y en qué días y canal aplica.
