@@ -90,6 +90,7 @@ h1.hero { margin: 6px 0 0; font-family: var(--serif); font-weight: 500; font-siz
 .pname { font-family: var(--serif); font-weight: 600; font-size: 22px; line-height: 1.1; overflow-wrap: anywhere; }
 .spec { font-size: 13px; color: var(--muted); font-weight: 600; }
 .pct { flex: none; background: var(--green); color: #fff; font-weight: 800; font-size: 15px; padding: 6px 9px; border-radius: 8px; font-variant-numeric: tabular-nums; }
+.pct.none { background: var(--input); color: var(--muted); font-size: 12px; font-weight: 700; }
 .prices { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
 .price { font-size: 28px; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
 .was { color: var(--strike); font-size: 14px; font-variant-numeric: tabular-nums; }

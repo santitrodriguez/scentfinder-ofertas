@@ -65,7 +65,7 @@
   const catName = c => (CATS.find(x => x[0] === c) || [, ''])[1];
   const SIZES = [['all', 'Todos'], ['s', 'Hasta 60 ml'], ['m', '75–125 ml'], ['l', '150 ml o más']];
   const inSize = (ml, k) => k === 'all' || (k === 's' ? ml <= 60 : k === 'm' ? ml > 60 && ml < 150 : ml >= 150);
-  const DISC = [[0, 'Todos'], [20, '20% o más'], [30, '30% o más'], [40, '40% o más']];
+  const DISC = [[0, 'Todos'], [10, 'En oferta'], [20, '20% o más'], [30, '30% o más'], [40, '40% o más']];
   const SORTS = [['pct', 'Mayor descuento'], ['price', 'Menor precio'], ['save', 'Mayor ahorro en $'], ['brand', 'Marca A–Z']];
   const sorts = () => S.card ? [SORTS[0], ['final', 'Precio final con mi tarjeta'], ...SORTS.slice(1)] : SORTS;
 
@@ -75,29 +75,43 @@
       const r = await fetch('data/ofertas.json', { cache: 'no-cache' });
       if (!r.ok) throw new Error(r.status);
       D = await r.json();
-      D._perfumes = new Set(D.offers.map(o => o.productId + '|' + o.ml)).size;
-      for (const o of D.offers) o._q = fold(`${o.brand} ${o.name} ${o.conc || ''} ${o.ml}ml ${storeName(o.store)}`);
+      // un ítem por perfume y tamaño, con todas sus tiendas (esté o no en oferta)
+      D.items = [];
+      for (const [pid, p] of Object.entries(D.products)) for (const sz of Object.values(p.sizes)) {
+        const stocked = sz.entries.filter(e => e.stock);
+        if (!stocked.length) continue;
+        D.items.push({ productId: pid, ml: sz.ml, brand: p.brand, name: p.name, conc: p.conc, cat: p.cat, image: sz.image || p.image,
+          entries: sz.entries, stocked, onSale: stocked.some(e => e.offer),
+          _q: fold(`${p.brand} ${p.name} ${p.conc || ''} ${sz.ml}ml ${sz.entries.map(e => storeName(e.store)).join(' ')}`) });
+      }
+      D._perfumes = D.items.length;
+      D._onSale = D.items.filter(i => i.onSale).length;
       route();
     } catch (e) {
       app.innerHTML = '<p class="empty">No se pudieron cargar las ofertas. Probá recargar la página en unos minutos.</p>';
     }
   }
 
+  // precio principal de un ítem: el más barato con stock (con tarjeta si aplica), o el de la tienda filtrada
+  function headOf(it) {
+    const pool = S.store === 'all' ? it.stocked : it.stocked.filter(e => e.store === S.store);
+    if (!pool.length) return null;
+    const h = [...pool].sort((a, b) => eff(a) - eff(b) || (b.offer ? b.pct : 0) - (a.offer ? a.pct : 0))[0];
+    return { productId: it.productId, ml: it.ml, brand: it.brand, name: it.name, conc: it.conc, cat: it.cat, image: it.image,
+      store: h.store, price: h.price, list: h.list, pct: h.offer ? h.pct : 0, offer: h.offer, url: h.url, date: h.date };
+  }
+
   function filtered() {
     const words = fold(S.q).split(/\s+/).filter(Boolean);
-    const list = D.offers.filter(o =>
-      (S.store === 'all' || o.store === S.store) && bestPct(o) >= S.min && inSize(o.ml, S.size) &&
-      inPrice(eff(o), S.price) && (S.cat === 'all' || o.cat === S.cat) &&
-      words.every(w => o._q.includes(w)));
-    // una tarjeta por perfume y tamaño: se queda la mejor oferta (precio con tarjeta si hay) como principal
-    const groups = new Map();
-    for (const o of list) {
-      const k = o.productId + '|' + o.ml, cur = groups.get(k);
-      if (!cur || eff(o) < eff(cur) - 0.5 || (Math.abs(eff(o) - eff(cur)) <= 0.5 && o.pct > cur.pct)) groups.set(k, o);
+    const heads = [];
+    for (const it of D.items) {
+      if (!inSize(it.ml, S.size) || (S.cat !== 'all' && it.cat !== S.cat) || !words.every(w => it._q.includes(w))) continue;
+      const o = headOf(it);
+      if (!o || bestPct(o) < S.min || !inPrice(eff(o), S.price)) continue;
+      heads.push(o);
     }
-    const heads = [...groups.values()];
     const by = {
-      pct: (a, b) => bestPct(b) - bestPct(a) || eff(a) - eff(b),
+      pct: (a, b) => bestPct(b) - bestPct(a) || groupSave(b) - groupSave(a) || eff(a) - eff(b),
       final: (a, b) => finalPrice(a) - finalPrice(b) || b.pct - a.pct,
       price: (a, b) => eff(a) - eff(b) || b.pct - a.pct,
       save: (a, b) => groupSave(b) - groupSave(a) || b.pct - a.pct,
@@ -105,7 +119,7 @@
     }[S.sort] || ((a, b) => b.pct - a.pct);
     return heads.sort(by);
   }
-  const catCount = c => new Set(D.offers.filter(o => o.cat === c).map(o => o.productId + '|' + o.ml)).size;
+  const catCount = c => D.items.filter(i => i.cat === c).length;
   const entriesOf = o => D.products[o.productId]?.sizes?.[o.ml]?.entries || [];
   // ahorro = tienda más cara con stock − el precio de la tarjeta principal
   function groupSave(o) {
@@ -120,12 +134,12 @@
     <header class="top">
       <div class="top-l">
         <a class="logo" href="#/">${LOGO}<span>ScentFinder</span></a>
-        <h1 class="hero">Perfumes de hombre en oferta hoy</h1>
-        <p class="lede">Solo perfumes con precio promocional y stock. Para cada uno te mostramos cuánto sale en las otras perfumerías.</p>
+        <h1 class="hero">Perfumes de hombre: precios y ofertas</h1>
+        <p class="lede">Todos los perfumes de hombre con stock en 6 perfumerías, con el precio en cada una. Los que están en oferta aparecen marcados con su descuento.</p>
       </div>
       <div class="top-r">
         <span><span class="long">Actualizado ${relDay(D.generatedAt)}</span>${dm(D.generatedAt)} · ${hm(D.generatedAt)}</span>
-        <span class="count"><b>${D._perfumes.toLocaleString('es-AR')} perfumes en oferta</b> en ${stores} perfumerías</span>
+        <span class="count"><b>${D._perfumes.toLocaleString('es-AR')} perfumes</b> · ${D._onSale.toLocaleString('es-AR')} en oferta</span>
         <a class="how" href="#/como-funciona">Cómo funciona</a>
       </div>
     </header>
@@ -145,7 +159,7 @@
   }
 
   function renderHome() {
-    document.title = 'ScentFinder · Ofertas de perfumes de hombre';
+    document.title = 'ScentFinder · Perfumes de hombre: precios y ofertas';
     app.className = 'wrap';
     const storeList = [['all', 'Todas'], ...D.stores.map(s => [s.id, s.name])];
     app.innerHTML = `
@@ -173,7 +187,7 @@
     <p class="sr" id="resumen" aria-live="polite"></p>
     <section class="grid" id="grid" aria-label="Ofertas"></section>
     <div id="after"></div>
-    <footer class="foot">Una oferta es un precio al menos ${Math.round(D.minDiscount * 100)}% por debajo del precio de lista de la propia tienda, con stock. El ahorro se calcula contra la tienda más cara que lo tiene en stock. La compra se hace en cada tienda: confirmá ahí precio, tamaño y promociones bancarias antes de pagar. <a href="#/como-funciona">Cómo funciona</a>.</footer>`;
+    <footer class="foot">Se muestran todos los perfumes de hombre con stock. Una oferta es un precio al menos ${Math.round(D.minDiscount * 100)}% por debajo del precio de lista de la propia tienda, con stock. El ahorro se calcula contra la tienda más cara que lo tiene en stock. La compra se hace en cada tienda: confirmá ahí precio, tamaño y promociones bancarias antes de pagar. <a href="#/como-funciona">Cómo funciona</a>.</footer>`;
 
     const q = document.getElementById('buscar');
     let t;
@@ -233,9 +247,9 @@
           <span class="pname">${esc(o.name)}</span>
           <span class="spec">${esc(o.conc || 'Fragancia')} · ${o.ml} ml${o.cat && o.cat !== 'disenador' ? ` · <span class="cat">${esc(catName(o.cat))}</span>` : ''}</span>
         </div>
-        <span class="pct">−${bestPct(o)}%</span>
+        ${bestPct(o) > 0 ? `<span class="pct">−${bestPct(o)}%</span>` : '<span class="pct none">Sin oferta</span>'}
       </div>
-      <div class="prices"><span class="price">${money(o.price)}</span><s class="was">${money(o.list)}</s></div>
+      <div class="prices"><span class="price">${money(o.price)}</span>${o.list > o.price ? `<s class="was">${money(o.list)}</s>` : ''}</div>
       <div class="where"><span>en <b>${esc(storeName(o.store))}</b>${sameAs.length ? `<span class="also">${sameAs.length > 1 ? ', ' + esc(sameAs.slice(0, -1).join(', ')) : ''} y ${esc(sameAs.at(-1))}</span>` : ''}</span>${stale}</div>
       ${bankLine(o.store, o.price, o.list)}
       <div class="others">
@@ -269,7 +283,7 @@
     document.getElementById('resumen').textContent = `${list.length} perfumes con estos filtros`;
     if (!list.length) {
       grid.innerHTML = '';
-      after.innerHTML = '<p class="empty">No hay ofertas con esos filtros hoy. Probá con otra tienda o un descuento menor.</p>';
+      after.innerHTML = '<p class="empty">No hay perfumes con esos filtros. Probá con otra tienda, otro tipo o un descuento menor.</p>';
       return;
     }
     grid.innerHTML = list.slice(0, S.shown).map(card).join('');
@@ -281,7 +295,7 @@
   // ---------- ficha ----------
   function renderProduct(id, mlWanted) {
     const p = D.products[id];
-    if (!p) { app.className = 'wrap narrow'; app.innerHTML = `<nav class="nav"><a href="#/">← Volver a las ofertas</a></nav><p class="empty">Este perfume ya no está en oferta hoy.</p>`; return; }
+    if (!p) { app.className = 'wrap narrow'; app.innerHTML = `<nav class="nav"><a href="#/">← Volver a los perfumes</a></nav><p class="empty">Este perfume no tiene stock hoy en ninguna tienda.</p>`; return; }
     const sizes = Object.values(p.sizes).sort((a, b) => a.ml - b.ml);
     const sz = p.sizes[mlWanted] || sizes.find(s => s.entries.some(e => e.offer)) || sizes[0];
     const ml = sz.ml;
@@ -344,7 +358,7 @@
     app.className = 'wrap narrow';
     app.innerHTML = `
     <nav class="nav">
-      <a href="#/">← Volver a las ofertas</a>
+      <a href="#/">← Volver a los perfumes</a>
       <span>Actualizado <b>${whenLabel(D.generatedAt)}</b></span>
     </nav>
     <main class="sheet">
@@ -380,7 +394,7 @@
     const pl = { juleriaque: 'VTEX · API de catálogo', rouge: 'VTEX · API de catálogo', beauty24: 'VTEX · API de catálogo', pigmento: 'VTEX · API de catálogo', parfumerie: 'Magento · página de producto', ruizyroca: 'Tiendanube · variantes del producto' };
     const minPct = Math.round(D.minDiscount * 100);
     app.innerHTML = `
-    <nav class="nav"><a href="#/">← Volver a las ofertas</a><span>Actualizado <b>${whenLabel(D.generatedAt)}</b></span></nav>
+    <nav class="nav"><a href="#/">← Volver a los perfumes</a><span>Actualizado <b>${whenLabel(D.generatedAt)}</b></span></nav>
     <div style="display:flex;flex-direction:column;gap:6px">
       <span class="eyebrow">ScentFinder Ofertas</span>
       <h1 class="page">Cómo funciona</h1>

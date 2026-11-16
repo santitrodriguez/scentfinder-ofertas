@@ -183,7 +183,12 @@ for (const [pk, cis] of byProduct) {
       });
     }
   }
-  if (hasOffer) products[id] = { brand, name, conc: conc_, cat, image: productImage, sizes };
+  // todos los perfumes con stock en al menos una tienda (estén o no en oferta)
+  const anyStock = Object.values(sizes).some(sz => sz.entries.some(e => e.stock));
+  if (anyStock) {
+    for (const sz of Object.values(sizes)) for (const e of sz.entries) { delete e.title; if (e.ean === sz.ean) delete e.ean; }
+    products[id] = { brand, name, conc: conc_, cat, image: productImage, sizes };
+  }
 }
 
 offers.sort((a, b) => b.pct - a.pct || a.price - b.price);
