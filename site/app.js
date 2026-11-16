@@ -4,7 +4,7 @@
   const PAGE = 60;
   const app = document.getElementById('app');
   let D = null;
-  const S = { q: '', store: 'all', min: 0, size: 'all', sort: 'pct', shown: PAGE, card: '', price: 'all', cat: 'all' };
+  const S = { q: '', store: 'all', min: 0, size: 'all', sort: 'pct', shown: PAGE, card: '', price: 'all', cat: 'all', pmin: null, pmax: null };
   try { S.card = localStorage.getItem('sf-card') || ''; } catch (e) { /* sin almacenamiento */ }
 
   // ---------- utilidades ----------
@@ -108,6 +108,7 @@
       if (!inSize(it.ml, S.size) || (S.cat !== 'all' && it.cat !== S.cat) || !words.every(w => it._q.includes(w))) continue;
       const o = headOf(it);
       if (!o || bestPct(o) < S.min || !inPrice(eff(o), S.price)) continue;
+      if ((S.pmin != null && eff(o) < S.pmin) || (S.pmax != null && eff(o) > S.pmax)) continue;
       heads.push(o);
     }
     const by = {
@@ -180,7 +181,12 @@
         <span class="lbl">Tamaño</span>${chips(SIZES, S.size, 'size')}
       </div>
       <div class="row chips" role="group" aria-label="Tipo de perfume"><span class="lbl">Tipo</span>${chips(CATS.map(([v, t]) => [v, v === 'all' ? t : `${t} (${catCount(v)})`]), S.cat, 'cat')}</div>
-      <div class="row chips" role="group" aria-label="Precio"><span class="lbl">Precio</span>${chips(PRICES, S.price, 'price')}</div>
+      <div class="row chips" role="group" aria-label="Precio"><span class="lbl">Precio</span>${chips(PRICES, S.price, 'price')}
+        <span class="range">
+          <label for="pmin">Desde $</label><input id="pmin" inputmode="numeric" placeholder="mín." value="${S.pmin != null ? S.pmin.toLocaleString('es-AR') : ''}">
+          <label for="pmax">hasta $</label><input id="pmax" inputmode="numeric" placeholder="máx." value="${S.pmax != null ? S.pmax.toLocaleString('es-AR') : ''}">
+        </span>
+      </div>
       ${D.promos?.cards?.length ? `<div class="row chips" role="group" aria-label="Mi tarjeta"><span class="lbl">Mi tarjeta</span>${chips([['', 'Ninguna'], ...D.promos.cards.map(c => [c.id, c.name])], S.card, 'card')}</div>
       <p class="card-note" id="cardnote"></p>` : ''}
     </section>
@@ -192,9 +198,24 @@
     const q = document.getElementById('buscar');
     let t;
     q.addEventListener('input', () => { clearTimeout(t); t = setTimeout(() => { S.q = q.value; S.shown = PAGE; renderGrid(); }, 120); });
+    for (const id of ['pmin', 'pmax']) {
+      const el = document.getElementById(id);
+      let tt;
+      el.addEventListener('input', () => {
+        clearTimeout(tt);
+        tt = setTimeout(() => {
+          const digits = el.value.replace(/\D/g, '');
+          S[id] = digits ? +digits : null;
+          el.value = digits ? (+digits).toLocaleString('es-AR') : '';
+          if (digits) { S.price = 'all'; app.querySelectorAll('.chip[data-k="price"]').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.v === 'all'))); }
+          S.shown = PAGE; renderGrid();
+        }, 350);
+      });
+    }
     document.getElementById('orden').addEventListener('change', e => { S.sort = e.target.value; S.shown = PAGE; renderGrid(); });
     app.querySelectorAll('.chip').forEach(b => b.addEventListener('click', () => {
       const k = b.dataset.k; S[k] = k === 'min' ? +b.dataset.v : b.dataset.v; S.shown = PAGE;
+      if (k === 'price') { S.pmin = S.pmax = null; for (const id of ['pmin', 'pmax']) { const el = document.getElementById(id); if (el) el.value = ''; } }
       if (k === 'card') {
         try { localStorage.setItem('sf-card', S.card); } catch (e) { /* sin almacenamiento */ }
         if (!S.card && S.sort === 'final') S.sort = 'pct';

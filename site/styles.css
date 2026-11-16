@@ -68,6 +68,11 @@ h1.hero { margin: 6px 0 0; font-family: var(--serif); font-weight: 500; font-siz
 .thumb.big { width: 148px; height: 148px; border-radius: 14px; }
 .thumb.big svg { width: 48px; height: 48px; }
 
+/* ---------- Rango de precio ---------- */
+.range { display: inline-flex; align-items: center; gap: 6px; margin-left: 6px; font-size: 13px; color: var(--muted); flex: none; }
+.range input { width: 104px; padding: 7px 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.range input:focus { outline: 2px solid var(--link); outline-offset: 1px; }
+
 /* ---------- Promos bancarias ---------- */
 .card-note { margin: 0; font-size: 13px; color: var(--ink-2); background: var(--input); border-radius: 10px; padding: 10px 12px; }
 .card-note .hoy { color: var(--green-ink); }
@@ -210,6 +215,7 @@ h1.page { margin: 0; font-family: var(--serif); font-weight: 500; font-size: 40p
   .row.chips .lbl { flex: none; }
   .chip { flex: none; font-weight: 700; padding: 10px 14px; min-height: 40px; }
   .sep { display: none; }
+  .range input { width: 92px; min-height: 40px; }
   .grid { grid-template-columns: 1fr; gap: 10px; }
   .card { padding: 14px; gap: 8px; }
   .thumb { width: 64px; height: 64px; }
