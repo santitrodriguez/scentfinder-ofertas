@@ -1,37 +1,37 @@
 {
   "parfumerie": {
     "ok": false,
-    "lastAttempt": "2026-11-26T19:24:57.989Z",
+    "lastAttempt": "2026-11-27T19:20:52.599Z",
     "error": "HTTP 403 (bloqueado) https://www.parfumerie.com.ar/fragancias/hombre.html?p=1&product_list_limit=48"
   },
   "pigmento": {
     "ok": true,
-    "lastAttempt": "2026-11-26T19:25:01.509Z",
-    "rows": 420,
-    "seconds": 4
+    "lastAttempt": "2026-11-27T19:20:58.962Z",
+    "rows": 418,
+    "seconds": 7
   },
   "beauty24": {
     "ok": true,
-    "lastAttempt": "2026-11-26T19:25:05.848Z",
-    "rows": 939,
-    "seconds": 9
+    "lastAttempt": "2026-11-27T19:20:59.610Z",
+    "rows": 943,
+    "seconds": 8
   },
   "rouge": {
     "ok": true,
-    "lastAttempt": "2026-11-26T19:25:08.527Z",
-    "rows": 1103,
-    "seconds": 11
+    "lastAttempt": "2026-11-27T19:21:02.259Z",
+    "rows": 1111,
+    "seconds": 10
   },
   "ruizyroca": {
     "ok": true,
-    "lastAttempt": "2026-11-26T19:26:42.139Z",
-    "rows": 551,
-    "seconds": 105
+    "lastAttempt": "2026-11-27T19:21:22.258Z",
+    "rows": 564,
+    "seconds": 30
   },
   "juleriaque": {
     "ok": true,
-    "lastAttempt": "2026-11-26T19:25:24.152Z",
-    "rows": 2415,
-    "seconds": 27
+    "lastAttempt": "2026-11-27T19:21:21.494Z",
+    "rows": 2426,
+    "seconds": 30
   }
 }
